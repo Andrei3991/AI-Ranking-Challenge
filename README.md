@@ -1,2 +1,2 @@
 # AI-Ranking-Challenge
-A ranking for an AI Challenge
+A simple  ranking for an AI Challenge
