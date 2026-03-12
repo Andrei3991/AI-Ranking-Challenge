@@ -95,9 +95,19 @@ with st.sidebar:
             selecionado = st.selectbox("Quem?", df['participante'].tolist())
             pontos_add = st.number_input("Qtd pontos", min_value=1, value=1)
             
-            if st.button("Confirmar Pontuação"):
+            # Cria duas colunas para colocar os botões lado a lado
+            col_add, col_sub = st.columns(2)
+            
+            if col_add.button("➕ Adicionar"):
                 atual = int(df.loc[df['participante'] == selecionado, 'pontos'].values[0])
                 nova_qtd = atual + pontos_add
+                supabase.table('ranking').update({'pontos': nova_qtd}).eq('participante', selecionado).execute()
+                st.rerun()
+                
+            if col_sub.button("➖ Remover"):
+                atual = int(df.loc[df['participante'] == selecionado, 'pontos'].values[0])
+                # A função max(0, ...) impede que a pontuação fique negativa (abaixo de zero)
+                nova_qtd = max(0, atual - pontos_add)
                 supabase.table('ranking').update({'pontos': nova_qtd}).eq('participante', selecionado).execute()
                 st.rerun()
 
@@ -130,6 +140,7 @@ else:
 
     with st.expander("Ver lista detalhada"):
         st.table(df_rank[['participante', 'pontos']].reset_index(drop=True))
+
 
 
 
