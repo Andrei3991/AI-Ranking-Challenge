@@ -10,7 +10,7 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="Ranking de Desafio de IA 🤖", page_icon="💡", layout="wide")
 
 # Atualiza a página a cada 10 segundos
-st_autorefresh(interval=10000, key="datarefresh")
+st_autorefresh(interval=5000, key="datarefresh")
 
 SENHA_ADMIN = "@@admin123" 
 
@@ -130,3 +130,4 @@ else:
 
     with st.expander("Ver lista detalhada"):
         st.table(df_rank[['participante', 'pontos']].reset_index(drop=True))
+
