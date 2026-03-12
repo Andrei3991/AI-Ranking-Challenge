@@ -6,7 +6,7 @@ from supabase import create_client, Client
 # ==========================================
 # CONFIGURAÇÃO INICIAL E SEGURANÇA
 # ==========================================
-st.set_page_config(page_title="Ranking de Ideias", page_icon="💡", layout="wide")
+st.set_page_config(page_title="Ranking desafio de IA", page_icon="💡", layout="wide")
 
 SENHA_ADMIN = "@@admin123" # Altere para a senha desejada
 
@@ -29,7 +29,7 @@ def carregar_dados():
     resposta = supabase.table('ranking').select("*").execute()
     df_temp = pd.DataFrame(resposta.data)
     if df_temp.empty:
-        return pd.DataFrame(columns=['id', 'participante', 'ideias'])
+        return pd.DataFrame(columns=['id', 'participante', 'pontos'])
     return df_temp
 
 df = carregar_dados()
@@ -37,8 +37,8 @@ df = carregar_dados()
 # ==========================================
 # TÍTULO PRINCIPAL
 # ==========================================
-st.title("🏆 Ranking Dinâmico de Ideias")
-st.markdown("Acompanhe em tempo real quem está liderando a maratona de ideias!")
+st.title("🏆 Ranking Dinâmico")
+st.markdown("Acompanhe em tempo real quem está liderando o desafio de IA!")
 
 # ==========================================
 # BARRA LATERAL (AUTENTICAÇÃO E CONTROLES)
@@ -84,35 +84,35 @@ with st.sidebar:
                     st.success(f"{novo_nome} removido!")
                     st.rerun()
 
-        # --- REGISTRAR IDEIAS ---
-        with st.expander("💡 Registrar Ideias"):
+        # --- REGISTRAR PONTOS ---
+        with st.expander("💡 Registrar Pontos"):
             lista_nomes = df['participante'].tolist() if not df.empty else []
             
             if lista_nomes:
                 escolha = st.selectbox("Selecione o Participante:", lista_nomes)
-                qtd_ideias = st.number_input("Quantidade", min_value=1, value=1, step=1)
+                qtd_pontos = st.number_input("Quantidade", min_value=1, value=1, step=1)
                 
                 col3, col4 = st.columns(2)
                 
                 if col3.button("➕ Adicionar"):
-                    # Descobre quantas ideias a pessoa tem hoje e soma
-                    ideias_atuais = int(df.loc[df['participante'] == escolha, 'ideias'].values[0])
-                    nova_qtd = ideias_atuais + qtd_ideias
+                    # Descobre quantos pontos a pessoa tem hoje e soma
+                    pontos_atuais = int(df.loc[df['participante'] == escolha, 'pontos'].values[0])
+                    nova_qtd = pontos_atuais + qtd_pontos
                     
                     # Atualiza no Supabase
-                    supabase.table('ranking').update({'ideias': nova_qtd}).eq('participante', escolha).execute()
+                    supabase.table('ranking').update({'pontos': nova_qtd}).eq('participante', escolha).execute()
                     st.rerun()
                     
                 if col4.button("➖ Remover"):
-                    ideias_atuais = int(df.loc[df['participante'] == escolha, 'ideias'].values[0])
-                    nova_qtd = ideias_atuais - qtd_ideias
+                    pontos_atuais = int(df.loc[df['participante'] == escolha, 'pontos'].values[0])
+                    nova_qtd = pontos_atuais - qtd_pontos
                     
                     # Garante que não fique negativo
                     if nova_qtd < 0:
                         nova_qtd = 0
                         
                     # Atualiza no Supabase
-                    supabase.table('ranking').update({'ideias': nova_qtd}).eq('participante', escolha).execute()
+                    supabase.table('ranking').update({'pontos': nova_qtd}).eq('participante', escolha).execute()
                     st.rerun()
             else:
                 st.info("Adicione um participante primeiro.")
@@ -124,22 +124,22 @@ if df.empty:
     st.info("O ranking ainda está vazio. Aguardando o administrador adicionar os participantes!")
 else:
     # Ordena os dados do maior para o menor
-    df_grafico = df.sort_values(by='ideias', ascending=False)
+    df_grafico = df.sort_values(by='pontos', ascending=False)
 
     # Gráfico
     fig = px.bar(
         df_grafico, 
         x='participante', 
-        y='ideias',       
-        text='ideias',
-        color='ideias',
+        y='pontos',       
+        text='pontos',
+        color='pontos',
         color_continuous_scale=px.colors.sequential.Agsunset,
     )
 
     fig.update_traces(textposition='outside', textfont_size=16)
     fig.update_layout(
         xaxis_title="", 
-        yaxis_title="Número de Ideias",
+        yaxis_title="Número de Pontos",
         showlegend=False,
         height=500,
         plot_bgcolor="rgba(0,0,0,0)",
