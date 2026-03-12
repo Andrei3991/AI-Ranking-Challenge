@@ -9,7 +9,7 @@ st.set_page_config(page_title="Ranking desafio de I.A.", page_icon="💡", layou
 # CONFIGURAÇÃO DE SEGURANÇA
 # ==========================================
 # Defina a senha do administrador aqui
-SENHA_ADMIN = "@@paiNGaming026#"
+SENHA_ADMIN = "@@admin123"
 
 # Inicializa as variáveis na memória (Session State)
 if 'participantes' not in st.session_state:
@@ -123,4 +123,5 @@ else:
     fig.update_yaxes(showticklabels=False, showgrid=False)
 
     # Exibe o gráfico
+
     st.plotly_chart(fig, use_container_width=True)
