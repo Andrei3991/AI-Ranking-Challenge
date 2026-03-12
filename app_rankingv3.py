@@ -50,7 +50,7 @@ df = carregar_dados()
 # TÍTULO PRINCIPAL
 # ==========================================
 st.title("🏆 Ranking Dinâmico de Desafio de IA")
-st.write(f"Atualizando automaticamente a cada 5 segundos! "When I say realtime that really means realtime!")
+st.write(f"Informação em tempo Real")
 
 # ==========================================
 # BARRA LATERAL (AUTENTICAÇÃO E CONTROLES)
@@ -130,6 +130,7 @@ else:
 
     with st.expander("Ver lista detalhada"):
         st.table(df_rank[['participante', 'pontos']].reset_index(drop=True))
+
 
 
 
