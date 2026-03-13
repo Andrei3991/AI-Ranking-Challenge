@@ -31,12 +31,20 @@ def registrar_participante(nome):
     st.session_state.usuario = nome
 
 def buscar_rodada():
-    res = supabase.table('rodada_atual').select("*").eq('id', 1).execute()
-    return res.data[0] if res.data else None
+    try:
+        res = supabase.table('rodada_atual').select("*").eq('id', 1).execute()
+        # Se retornar dados, usa o primeiro. Se não, cria um dicionário padrão.
+        if res.data and len(res.data) > 0:
+            return res.data[0]
+        return {"status": "aguardando", "imagem_a": None, "imagem_b": None}
+    except Exception:
+        return {"status": "aguardando", "imagem_a": None, "imagem_b": None}
 
-def ja_votou(nome):
-    res = supabase.table('votos').select("*").eq('participante', nome).execute()
-    return True if res.data else False
+# ... lá embaixo, onde estava o erro na linha 90 ...
+rodada = buscar_rodada()
+
+if rodada and rodada.get('status') == 'aguardando':
+    st.info("Aguardando o organizador iniciar a próxima rodada...")
 
 # ==========================================
 # INTERFACE DE LOGIN
