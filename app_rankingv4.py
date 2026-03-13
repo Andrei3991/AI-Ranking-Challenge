@@ -125,7 +125,7 @@ else:
             else:
                 st.error("❌ Ops! Era IA. Aguarde o próximo desafio.")
         else:
-            st.subheader("Qual é a imagem REAL?")
+            st.subheader("Qual das imagens NÃO foi feita por uma IA?")
             col1, col2 = st.columns(2)
             for col, letra, url in zip([col1, col2], ["A", "B"], [rodada['imagem_a'], rodada['imagem_b']]):
                 with col:
