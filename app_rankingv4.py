@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from supabase import create_client, Client
 from streamlit_autorefresh import st_autorefresh
 
@@ -20,32 +21,29 @@ def init_connection() -> Client:
 supabase = init_connection()
 
 # ==========================================
-# FUNÇÕES DE BANCO DE DADOS (COM TRATAMENTO DE ERRO)
+# FUNÇÕES DE BANCO DE DADOS
 # ==========================================
 
 def buscar_rodada():
     try:
         res = supabase.table('rodada_atual').select("*").eq('id', 1).execute()
-        if res.data: return res.data[0]
-        return {"status": "aguardando", "imagem_a": "", "imagem_b": "", "resposta_correta": "A"}
+        return res.data[0] if res.data else {"status": "aguardando"}
     except:
         return {"status": "aguardando"}
 
-def ja_votou(nome):
-    if not nome: return False
+def buscar_voto_usuario(nome):
     res = supabase.table('votos').select("*").eq('participante', nome).execute()
-    return len(res.data) > 0
+    return res.data[0] if res.data else None
 
 def carregar_ranking():
     res = supabase.table('ranking').select("*").order('pontos', desc=True).execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame(columns=['participante', 'pontos'])
 
 # ==========================================
-# TELA DE ENTRADA (JOGADOR OU ADMIN)
+# TELA DE ENTRADA
 # ==========================================
 if 'perfil' not in st.session_state:
     st.title("🤖 IA ou Real? - O Desafio")
-    
     aba1, aba2 = st.tabs(["👤 Entrar como Jogador", "🔐 Acesso Admin"])
     
     with aba1:
@@ -53,7 +51,6 @@ if 'perfil' not in st.session_state:
         if st.button("Entrar no Jogo"):
             if nome_input:
                 nome_limpo = nome_input.strip()
-                # Cria participante se não existir
                 res = supabase.table('ranking').select("*").eq('participante', nome_limpo).execute()
                 if not res.data:
                     supabase.table('ranking').insert({'participante': nome_limpo, 'pontos': 0}).execute()
@@ -67,23 +64,19 @@ if 'perfil' not in st.session_state:
             if senha == SENHA_ADMIN:
                 st.session_state.perfil = "admin"
                 st.rerun()
-            else:
-                st.error("Senha incorreta!")
     st.stop()
 
-# ==========================================
-# PAINEL DO ADMINISTRADOR
-# ==========================================
+# ================= : PAINEL ADMIN : =================
 if st.session_state.perfil == "admin":
-    st.title("⚙️ Painel de Controle - Admin")
-    if st.button("⬅️ Sair do Painel"):
+    st.title("⚙️ Admin")
+    if st.button("⬅️ Sair"):
         del st.session_state.perfil
         st.rerun()
 
     col_cfg, col_gestao = st.columns([1, 1])
 
     with col_cfg:
-        st.subheader("🚀 Configurar Rodada")
+        st.subheader("🚀 Próxima Rodada")
         img_a = st.text_input("URL Imagem A")
         img_b = st.text_input("URL Imagem B")
         correta = st.radio("Qual é a REAL?", ["A", "B"])
@@ -102,65 +95,59 @@ if st.session_state.perfil == "admin":
             st.rerun()
 
     with col_gestao:
-        st.subheader("👥 Gestão de Pontos")
+        st.subheader("👥 Gestão")
         df_rank = carregar_ranking()
         if not df_rank.empty:
             alvo = st.selectbox("Participante:", df_rank['participante'].tolist())
-            pts_ajuste = st.number_input("Quantidade:", min_value=1, value=1)
-            
-            b1, b2, b3 = st.columns(3)
-            if b1.button("➕ Pontuar"):
-                atual = int(df_rank.loc[df_rank['participante'] == alvo, 'pontos'].values[0])
-                supabase.table('ranking').update({'pontos': atual + pts_ajuste}).eq('participante', alvo).execute()
-                st.rerun()
-            if b2.button("➖ Remover"):
-                atual = int(df_rank.loc[df_rank['participante'] == alvo, 'pontos'].values[0])
-                supabase.table('ranking').update({'pontos': max(0, atual - pts_ajuste)}).eq('participante', alvo).execute()
-                st.rerun()
-            if b3.button("🗑️ Excluir"):
+            b1, b2 = st.columns(2)
+            if b1.button("🗑️ Excluir"):
                 supabase.table('ranking').delete().eq('participante', alvo).execute()
                 st.rerun()
+            if b2.button("🔄 Zerar Tudo"):
+                supabase.table('ranking').update({'pontos': 0}).neq('participante', '').execute()
+                st.rerun()
 
-# ==========================================
-# TELA DO JOGADOR
-# ==========================================
+# ================= : TELA JOGADOR : =================
 else:
     rodada = buscar_rodada()
-    st.title(f"Jogador: {st.session_state.get('usuario', 'Visitante')}")
+    st.title(f"Jogador: {st.session_state.usuario}")
     
-    if st.button("Sair do Jogo"):
-        del st.session_state.perfil
-        del st.session_state.usuario
-        st.rerun()
-
     if rodada['status'] == 'aguardando':
-        st.info("Aguardando o organizador iniciar a rodada...")
+        st.info("Aguardando o início da rodada...")
         
     elif rodada['status'] == 'votando':
-        if ja_votou(st.session_state.usuario):
-            st.warning("Voto registrado! Aguarde o resultado...")
+        voto_feito = buscar_voto_usuario(st.session_state.usuario)
+        
+        if voto_feito:
+            # FEEDBACK DE ACERTO/ERRO EM TEMPO REAL
+            if voto_feito['voto'] == rodada['resposta_correta']:
+                st.success("✨ Você acertou! Aguarde o resultado oficial.")
+            else:
+                st.error("❌ Ops! Você escolheu a imagem de IA. Mais sorte na próxima!")
         else:
             st.subheader("Qual é a imagem REAL?")
             col1, col2 = st.columns(2)
-            
-            for col, letra, img_url in zip([col1, col2], ["A", "B"], [rodada['imagem_a'], rodada['imagem_b']]):
+            for col, letra, url in zip([col1, col2], ["A", "B"], [rodada['imagem_a'], rodada['imagem_b']]):
                 with col:
-                    if img_url: st.image(img_url, caption=f"Opção {letra}")
-                    else: st.error(f"URL da Imagem {letra} inválida.")
-                    
+                    if url: st.image(url, caption=f"Opção {letra}")
                     if st.button(f"Votar na {letra}", use_container_width=True):
                         if rodada['resposta_correta'] == letra:
-                            # Soma ponto
                             res = supabase.table('ranking').select("pontos").eq('participante', st.session_state.usuario).execute()
-                            if res.data:
-                                novos = res.data[0]['pontos'] + 1
-                                supabase.table('ranking').update({'pontos': novos}).eq('participante', st.session_state.usuario).execute()
-                        
+                            supabase.table('ranking').update({'pontos': res.data[0]['pontos'] + 1}).eq('participante', st.session_state.usuario).execute()
                         supabase.table('votos').insert({'participante': st.session_state.usuario, 'voto': letra}).execute()
                         st.rerun()
 
     elif rodada['status'] == 'resultado':
-        st.success(f"A resposta correta era a Opção {rodada['resposta_correta']}!")
+        st.success(f"🏆 A resposta correta era a Opção {rodada['resposta_correta']}!")
+        
+        # --- EXIBIÇÃO EM GRÁFICO ---
         df_rank = carregar_ranking()
-        st.subheader("🏆 Ranking Atual")
-        st.dataframe(df_rank[['participante', 'pontos']], use_container_width=True, hide_index=True)
+        if not df_rank.empty:
+            st.subheader("📊 Ranking Geral")
+            fig = px.bar(
+                df_rank, x='participante', y='pontos', 
+                color='pontos', text='pontos',
+                color_continuous_scale='Viridis'
+            )
+            fig.update_layout(yaxis_visible=False)
+            st.plotly_chart(fig, use_container_width=True)
